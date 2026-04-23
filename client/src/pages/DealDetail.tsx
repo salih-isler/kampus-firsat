@@ -10,13 +10,14 @@ import { ArrowLeft, Users, Package, Zap, CheckCircle, Loader2, X } from "lucide-
 import { useDeals } from "@/contexts/DealsContext";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { formatPrice, formatTimeLeft, getTimeProgress } from "@/lib/data";
+import { tlToMonad, MONAD_TL_RATE } from "@/lib/monad";
 import { toast } from "sonner";
 
 export default function DealDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { getDealById, updateDealStock, addTicket } = useDeals();
-  const { account, isConnected, sendTransaction, isLoading: web3Loading, updateBalance } = useWeb3();
+  const { account, isConnected, sendTransaction, isLoading: web3Loading, updateBalance, balance } = useWeb3();
   const deal = getDealById(params.id);
   const [flashing, setFlashing] = useState(false);
   const [purchased, setPurchased] = useState(false);
@@ -52,6 +53,20 @@ export default function DealDetail() {
       return;
     }
 
+    // TL → MONAD dönüşümü
+    const requiredMonad = tlToMonad(deal.currentPrice);
+    const userBalance = parseFloat(balance || "0");
+
+    // Bakiye kontrolü
+    if (userBalance < requiredMonad) {
+      toast.error(
+        `Yetersiz bakiye! Gerekli: ${requiredMonad.toFixed(4)} MONAD (${(requiredMonad * MONAD_TL_RATE).toFixed(2)} TL)\nMevcut: ${userBalance.toFixed(4)} MONAD`,
+        { duration: 3000 }
+      );
+      setShowConfirmModal(false);
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -76,14 +91,24 @@ export default function DealDetail() {
 
       addTicket(ticket);
 
-      // Bakiye güncelle
+      // Bakiye güncelle (MONAD düşüldü)
+      // Mock: Bakiye düşülüyor (gerçek blockchain'de Smart Contract yapacak)
+      const newBalance = userBalance - requiredMonad;
+      localStorage.setItem(
+        "web3-connection",
+        JSON.stringify({
+          account,
+          balance: newBalance.toString(),
+          timestamp: Date.now(),
+        })
+      );
       await updateBalance();
 
       setPurchased(true);
       setShowConfirmModal(false);
 
       toast.success("Satın alındı! 🎉", {
-        description: `${deal.productName} — ${formatPrice(deal.currentPrice)}\nKod: ${deliveryCode}`,
+        description: `${deal.productName} — ${formatPrice(deal.currentPrice)}\n${requiredMonad.toFixed(4)} MONAD (${(requiredMonad * MONAD_TL_RATE).toFixed(2)} TL) kullanıldı\nKod: ${deliveryCode}`,
         duration: 3000,
       });
 
@@ -93,7 +118,8 @@ export default function DealDetail() {
     } finally {
       setIsProcessing(false);
     }
-  }, [deal, updateDealStock, navigate, addTicket, updateBalance]);
+  }, [deal, updateDealStock, navigate, addTicket, updateBalance, account, balance]);
+
 
 
   if (!deal) return null;

@@ -38,3 +38,17 @@ export const MIN_PURCHASE_AMOUNT = "1000000000000000000"; // 1 MONAD
 
 // Transaction gas limit
 export const GAS_LIMIT = "200000";
+
+// MONAD/TL Exchange Rate
+// 1 MONAD = 8 TL
+export const MONAD_TL_RATE = 8;
+
+// TL fiyatını MONAD'a çevir
+export function tlToMonad(tlAmount: number): number {
+  return tlAmount / MONAD_TL_RATE;
+}
+
+// MONAD'ı TL'ye çevir
+export function monadToTl(monadAmount: number): number {
+  return monadAmount * MONAD_TL_RATE;
+}
