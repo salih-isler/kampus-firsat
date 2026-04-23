@@ -190,7 +190,9 @@ export default function DealDetail() {
       {/* Fixed bottom CTA */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[oklch(0.18_0.02_260)]/95 backdrop-blur-md border-t border-[oklch(0.25_0.02_260)] px-4 py-4 z-40">
         <p className="text-center text-xs text-[oklch(0.70_0.02_240)] mb-2 font-medium">
-          Kalan Paket: <span className="font-bold text-white">{deal.stock}</span>
+          Kalan Paket: <span className={`font-bold ${
+            deal.stock === 0 ? "text-red-400" : "text-white"
+          }`}>{deal.stock}</span>
         </p>
         {purchased ? (
           <div className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-2xl py-4 font-bold text-lg">
@@ -198,8 +200,8 @@ export default function DealDetail() {
             Satın Alındı!
           </div>
         ) : deal.stock <= 0 ? (
-          <div className="flex items-center justify-center gap-2 bg-red-600 text-white rounded-2xl py-4 font-bold text-lg">
-            Stok Tükendi
+          <div className="flex items-center justify-center gap-2 bg-red-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-red-500">
+            ⛔ Stok Tükendi
           </div>
         ) : (
           <button

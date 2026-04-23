@@ -138,8 +138,16 @@ function DealCard({
             className="w-full h-full object-cover"
           />
           {/* Discount badge */}
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold rounded-lg px-1.5 py-0.5 flex items-center gap-1">
-            👥 {deal.viewerCount} kişi İNCELİYOR
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {deal.stock === 0 ? (
+              <div className="bg-red-600 text-white text-xs font-bold rounded-lg px-2 py-1 flex items-center gap-1">
+                ⛔ TÜKENDI
+              </div>
+            ) : (
+              <div className="bg-red-500 text-white text-xs font-bold rounded-lg px-1.5 py-0.5 flex items-center gap-1">
+                👥 {deal.viewerCount} kişi İNCELİYOR
+              </div>
+            )}
           </div>
         </div>
 
@@ -170,11 +178,13 @@ function DealCard({
 
           {/* Stock */}
           <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-[oklch(0.70_0.02_240)]">
-              Kalan Süre: <span className="font-bold text-white">{timeLeft}</span>
-            </span>
-            <span className="text-xs font-semibold text-white bg-[oklch(0.25_0.02_260)] px-2 py-0.5 rounded-full">
-              {deal.stock} kaldı
+            <span className="text-xs text-[oklch(0.70_0.02_240)]">Kalan Süre: <span className="font-bold text-white">{timeLeft}</span></span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              deal.stock === 0
+                ? "bg-red-600 text-white"
+                : "text-white bg-[oklch(0.25_0.02_260)]"
+            }`}>
+              {deal.stock === 0 ? "Tükendi" : `${deal.stock} kaldı`}
             </span>
           </div>
         </div>
