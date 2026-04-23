@@ -1,7 +1,7 @@
 /**
  * DealsContext — Global stok yönetimi + Canlı fiyat düşüşü
  * Tüm sayfalar arasında deal, stok ve fiyat durumunu paylaş
- * Her saniye: fiyat -1 TL, kalan süre güncelle
+ * Her saniye: fiyat oransal düşüş (başlangıç fiyatına göre), kalan süre güncelle
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
@@ -23,7 +23,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS);
   const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS);
 
-  // Her saniye: fiyat -1 TL, kalan süre güncelle
+  // Her saniye: fiyat oransal düşüş, kalan süre güncelle
+  // Düşüş oranı: (başlangıç fiyatı - taban fiyatı) / toplam süre (saniye)
   useEffect(() => {
     const interval = setInterval(() => {
       setDeals((prev) =>
@@ -40,8 +41,18 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
             };
           }
 
-          // Fiyatı 1 TL azalt, taban fiyatın altına gitmesin
-          const newPrice = Math.max(deal.minPrice, deal.currentPrice - 1);
+          // Oransal fiyat düşüşü hesapla
+          // Düşüş miktarı = (başlangıç fiyatı - taban fiyatı) / (toplam süre saniye cinsinden) * 1 saniye
+          const totalDurationMs = deal.expiresAt - (deal.expiresAt - (deal.expiresAt - now) - (deal.expiresAt - now));
+          const initialDuration = (deal.expiresAt - Date.now() + timeRemaining) || 1; // Başlangıçtaki süre
+          const priceRange = deal.startPrice - deal.minPrice; // Düşebilecek maksimum fiyat
+          const totalDurationSeconds = initialDuration / 1000; // Toplam süre saniye cinsinden
+          
+          // Saniye başına düşüş miktarı
+          const priceDropPerSecond = totalDurationSeconds > 0 ? priceRange / totalDurationSeconds : 0;
+          
+          // Yeni fiyat
+          const newPrice = Math.max(deal.minPrice, deal.currentPrice - priceDropPerSecond);
 
           return {
             ...deal,
