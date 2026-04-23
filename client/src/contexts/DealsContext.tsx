@@ -1,9 +1,10 @@
 /**
- * DealsContext — Global stok yönetimi
- * Tüm sayfalar arasında deal ve stok durumunu paylaş
+ * DealsContext — Global stok yönetimi + Canlı fiyat düşüşü
+ * Tüm sayfalar arasında deal, stok ve fiyat durumunu paylaş
+ * Her saniye: fiyat -1 TL, kalan süre güncelle
  */
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { MOCK_DEALS, type Deal } from "@/lib/data";
 
 interface DealsContextType {
@@ -16,6 +17,37 @@ const DealsContext = createContext<DealsContextType | undefined>(undefined);
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS);
+
+  // Her saniye: fiyat -1 TL, kalan süre güncelle
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDeals((prev) =>
+        prev.map((deal) => {
+          const now = Date.now();
+          const timeRemaining = Math.max(0, deal.expiresAt - now);
+
+          // Eğer süre bittiyse fiyatı taban fiyata sabitle
+          if (timeRemaining <= 0) {
+            return {
+              ...deal,
+              currentPrice: deal.minPrice,
+              expiresAt: now, // Süresi bitti
+            };
+          }
+
+          // Fiyatı 1 TL azalt, taban fiyatın altına gitmesin
+          const newPrice = Math.max(deal.minPrice, deal.currentPrice - 1);
+
+          return {
+            ...deal,
+            currentPrice: newPrice,
+          };
+        })
+      );
+    }, 1000); // Her 1 saniyede bir
+
+    return () => clearInterval(interval);
+  }, []);
 
   const updateDealStock = useCallback((dealId: string, quantity: number) => {
     setDeals((prev) =>
