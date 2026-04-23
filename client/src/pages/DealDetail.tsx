@@ -160,6 +160,19 @@ export default function DealDetail() {
           </div>
         </div>
 
+        {/* Taban Fiyatı */}
+        <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-4 border border-[oklch(0.25_0.02_260)]">
+          <p className="text-xs text-[oklch(0.70_0.02_240)] font-medium mb-2">Taban Fiyat (En Düşük)</p>
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold font-price text-[oklch(0.65_0.22_45)]">
+              {formatPrice(deal.minPrice)}
+            </span>
+            <span className="text-xs text-[oklch(0.70_0.02_240)] text-right">
+              Fiyat bu seviyeye kadar düşebilir
+            </span>
+          </div>
+        </div>
+
         {/* Time & Stock */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-3 border border-[oklch(0.25_0.02_260)]">
