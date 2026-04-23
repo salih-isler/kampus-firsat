@@ -1,13 +1,16 @@
 /**
  * Wallet — Cüzdanım ve QR Biletler
  * Design: DropBite — koyu tema
+ * Web3: Monad Testnet transaction tracking
  */
 
 import { useState } from "react";
-import { MapPin, Star, Coins, CheckCircle, Clock, ChevronRight } from "lucide-react";
+import { MapPin, Star, Coins, CheckCircle, Clock, ChevronRight, ExternalLink } from "lucide-react";
 import { MOCK_TICKETS, MOCK_WALLET, formatPrice, type Ticket } from "@/lib/data";
+import { useWeb3 } from "@/contexts/Web3Context";
 import { BottomNav } from "./ConsumerFeed";
 import { toast } from "sonner";
+import { MONAD_CONFIG } from "@/lib/monad";
 
 function QRCodeDisplay({ data }: { data: string }) {
   const hash = data.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -61,6 +64,7 @@ function QRCodeDisplay({ data }: { data: string }) {
 export default function Wallet() {
   const [tickets] = useState<Ticket[]>(MOCK_TICKETS);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const { account, isConnected, balance } = useWeb3();
 
   return (
     <div className="app-shell flex flex-col min-h-dvh bg-[oklch(0.12_0.01_260)]">
@@ -71,6 +75,27 @@ export default function Wallet() {
       </header>
 
       <main className="flex-1 px-4 py-4 pb-24 space-y-4">
+        {/* Web3 Balance Card */}
+        {isConnected && (
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg border border-blue-500/30">
+            <p className="text-sm font-semibold text-blue-100 mb-3">Monad Testnet Bakiyesi</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-3xl font-bold font-price">
+                  {parseFloat(balance).toFixed(2)}
+                </p>
+                <p className="text-xs text-blue-100 mt-1">MONAD</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-100 mb-1">Cüzdan</p>
+                <p className="text-sm font-mono text-white">
+                  {account?.slice(0, 6)}...{account?.slice(-4)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Balance card */}
         <div className="bg-gradient-to-br from-[oklch(0.65_0.22_45)] to-[oklch(0.60_0.25_20)] rounded-2xl p-5 text-[oklch(0.12_0.01_260)] shadow-lg">
           <p className="text-sm font-semibold text-[oklch(0.12_0.01_260)]/80 mb-3">Bakiyem</p>

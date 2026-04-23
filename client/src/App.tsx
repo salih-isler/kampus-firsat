@@ -10,6 +10,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { DealsProvider } from "./contexts/DealsContext";
+import { Web3Provider } from "./contexts/Web3Context";
 import ConsumerFeed from "./pages/ConsumerFeed";
 import DealDetail from "./pages/DealDetail";
 import Wallet from "./pages/Wallet";
@@ -32,12 +33,14 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <DealsProvider>
-          <TooltipProvider>
-            <Toaster position="top-center" richColors />
-            <Router />
-          </TooltipProvider>
-        </DealsProvider>
+        <Web3Provider>
+          <DealsProvider>
+            <TooltipProvider>
+              <Toaster position="top-center" richColors />
+              <Router />
+            </TooltipProvider>
+          </DealsProvider>
+        </Web3Provider>
       </ThemeProvider>
     </ErrorBoundary>
   );

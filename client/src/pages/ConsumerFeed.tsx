@@ -1,17 +1,21 @@
 /**
  * ConsumerFeed — Tüketici Ana Sayfa / Keşif Feed
  * Design: DropBite — koyu tema, turuncu aksentler, koyu kartlar
+ * Web3: Monad Testnet + MetaMask entegrasyonu
  */
 
 import { useState, useEffect } from "react";
-import { MapPin, ChevronDown, Coins, Star, Bell } from "lucide-react";
+import { MapPin, ChevronDown, Coins, Star, Bell, Wallet } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDeals } from "@/contexts/DealsContext";
+import { useWeb3 } from "@/contexts/Web3Context";
 import { formatPrice, getPriceColor, formatTimeLeft, getTimeProgress, type Deal } from "@/lib/data";
+import { toast } from "sonner";
 
 export default function ConsumerFeed() {
   const [, navigate] = useLocation();
   const { deals } = useDeals();
+  const { account, isConnected, balance, connectWallet, disconnectWallet, isLoading } = useWeb3();
   const [tick, setTick] = useState(0);
 
   // Simulate live price drops every 3 seconds
@@ -32,20 +36,33 @@ export default function ConsumerFeed() {
             <h1 className="text-lg font-bold text-white leading-tight">Salih</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Wallet badges */}
-            <div className="flex items-center gap-1 bg-[oklch(0.25_0.02_260)] border border-[oklch(0.35_0.02_260)] rounded-full px-2.5 py-1">
-              <Star className="w-3.5 h-3.5 text-[oklch(0.72_0.18_70)]" />
-              <span className="text-xs font-bold text-[oklch(0.72_0.18_70)] font-price">
-                4,150
-              </span>
-            </div>
-            <div className="flex items-center gap-1 bg-[oklch(0.25_0.02_260)] border border-[oklch(0.35_0.02_260)] rounded-full px-2.5 py-1">
-              <Coins className="w-3.5 h-3.5 text-[oklch(0.65_0.22_45)]" />
-              <span className="text-xs font-bold text-[oklch(0.65_0.22_45)] font-price">
-                2
-              </span>
-            </div>
-            <button className="w-8 h-8 rounded-full bg-[oklch(0.25_0.02_260)] flex items-center justify-center relative">
+            {/* Web3 Wallet Button */}
+            {isConnected ? (
+              <>
+                <div className="flex items-center gap-1 bg-gradient-to-r from-[oklch(0.65_0.22_45)] to-[oklch(0.60_0.25_20)] border border-[oklch(0.65_0.22_45)] rounded-full px-2.5 py-1">
+                  <Wallet className="w-3.5 h-3.5 text-white" />
+                  <span className="text-xs font-bold text-white font-price">
+                    {parseFloat(balance).toFixed(2)} MON
+                  </span>
+                </div>
+                <button
+                  onClick={disconnectWallet}
+                  className="text-xs font-semibold bg-[oklch(0.25_0.02_260)] hover:bg-[oklch(0.30_0.02_260)] text-white px-2 py-1 rounded-full transition-colors"
+                >
+                  {account?.slice(0, 6)}...{account?.slice(-4)}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={connectWallet}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-[oklch(0.65_0.22_45)] to-[oklch(0.60_0.25_20)] text-white font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                {isLoading ? "Bağlanıyor..." : "Cüzdan Bağla"}
+              </button>
+            )}
+            <button className="w-8 h-8 rounded-full bg-[oklch(0.25_0.02_260)] flex items-center justify-center relative hover:bg-[oklch(0.30_0.02_260)] transition-colors">
               <Bell className="w-4 h-4 text-[oklch(0.70_0.02_240)]" />
               <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
             </button>

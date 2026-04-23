@@ -1,12 +1,14 @@
 /**
  * DealDetail — Canlı Açık Artırma (Adrenalin Odası)
  * Design: DropBite — koyu tema, turuncu buton, stok azaltma
+ * Web3: Monad Testnet + MetaMask satın alım
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Users, Package, Zap, CheckCircle } from "lucide-react";
+import { ArrowLeft, Users, Package, Zap, CheckCircle, Loader2 } from "lucide-react";
 import { useDeals } from "@/contexts/DealsContext";
+import { useWeb3 } from "@/contexts/Web3Context";
 import { formatPrice, formatTimeLeft, getTimeProgress } from "@/lib/data";
 import { toast } from "sonner";
 
@@ -14,10 +16,12 @@ export default function DealDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { getDealById, updateDealStock } = useDeals();
+  const { account, isConnected, sendTransaction, isLoading: web3Loading } = useWeb3();
   const deal = getDealById(params.id);
   const [flashing, setFlashing] = useState(false);
   const [purchased, setPurchased] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   // Live price drop simulation
   useEffect(() => {
@@ -38,21 +42,46 @@ export default function DealDetail() {
     return () => clearInterval(interval);
   }, []);
 
-  const handlePurchase = useCallback(() => {
+  const handlePurchase = useCallback(async () => {
     if (!deal) return;
     if (deal.stock <= 0) {
       toast.error("Stok tükendi!", { duration: 2000 });
       return;
     }
-    // Stok azalt
-    updateDealStock(deal.id, 1);
-    setPurchased(true);
-    toast.success("Satın alındı! 🎉", {
-      description: `${deal.productName} — ${formatPrice(deal.currentPrice)}`,
-      duration: 3000,
-    });
-    setTimeout(() => navigate("/wallet"), 1800);
-  }, [deal, updateDealStock, navigate]);
+
+    if (!isConnected) {
+      toast.error("Lütfen cüzdan bağlayın", { duration: 2000 });
+      return;
+    }
+
+    try {
+      // Satın alım işlemini başlat
+      toast.loading("İşlem başlatılıyor...", { duration: 2000 });
+
+      // MetaMask'tan MONAD transfer iste
+      const amount = (deal.currentPrice / 1e18).toString(); // Wei'den MONAD'a çevir
+      const txHash = await sendTransaction(deal.id, amount);
+
+      if (txHash) {
+        setTxHash(txHash);
+        
+        // Stok azalt
+        updateDealStock(deal.id, 1);
+        setPurchased(true);
+
+        toast.success("Satın alındı! 🎉", {
+          description: `${deal.productName} — ${formatPrice(deal.currentPrice)} MONAD\nTX: ${txHash.slice(0, 10)}...`,
+          duration: 3000,
+        });
+
+        setTimeout(() => navigate("/wallet"), 2000);
+      } else {
+        toast.error("İşlem başarısız", { duration: 2000 });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "İşlem sırasında hata oluştu", { duration: 2000 });
+    }
+  }, [deal, isConnected, updateDealStock, navigate, sendTransaction]);
 
   if (!deal) return null;
 
@@ -98,104 +127,95 @@ export default function DealDetail() {
 
         {/* Cafe info on image */}
         <div className="absolute bottom-4 left-4 right-4">
-          <p className="text-white/80 text-xs font-semibold mb-0.5">
-            {deal.cafeName} · {deal.cafeLocation}
-          </p>
-          <h1 className="text-white text-xl font-bold leading-tight">{deal.productName}</h1>
+          <p className="text-xs text-white/80 font-medium">{deal.cafeName}</p>
+          <h1 className="text-xl font-bold text-white leading-tight mt-0.5">
+            {deal.productName}
+          </h1>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col px-4 pt-5 pb-32 gap-4">
-
-        {/* Price counter */}
-        <div className="rounded-2xl border border-[oklch(0.25_0.02_260)] bg-[oklch(0.18_0.02_260)] p-5 text-center">
-          <p className="text-xs font-semibold text-[oklch(0.70_0.02_240)] mb-1 uppercase tracking-wide">
-            Anlık Fiyat
-          </p>
-          <div
-            className={`text-6xl font-bold font-price text-red-400 leading-none transition-colors duration-500 ${flashing ? "price-flash" : ""}`}
-          >
-            {formatPrice(deal.currentPrice)}
-          </div>
-          <p className="text-sm text-[oklch(0.70_0.02_240)] line-through mt-2">
-            Orijinal: {formatPrice(deal.originalPrice)}
-          </p>
-          <p className="text-xs font-semibold text-green-400 mt-1">
-            {formatPrice(deal.originalPrice - deal.currentPrice)} tasarruf!
-          </p>
-        </div>
-
-        {/* FOMO — Social proof */}
-        <div
-          className={`flex items-center gap-3 bg-[oklch(0.22_0.02_260)] border border-[oklch(0.30_0.02_260)] rounded-xl px-4 py-3 ${shaking ? "shake" : ""}`}
-        >
-          <div className="w-8 h-8 rounded-full bg-[oklch(0.25_0.02_260)] flex items-center justify-center shrink-0">
-            <Users className="w-4 h-4 text-[oklch(0.65_0.22_45)]" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">
-              Şu an{" "}
-              <span className="text-[oklch(0.65_0.22_45)] font-price">{deal.viewerCount}</span>{" "}
-              kişi bu fırsatı inceliyor.
-            </p>
-            <p className="text-xs text-[oklch(0.70_0.02_240)]">Hızlı karar ver!</p>
-          </div>
-          <span className="w-2 h-2 rounded-full bg-[oklch(0.65_0.22_45)] pulse-dot ml-auto shrink-0" />
-        </div>
-
-        {/* Timer */}
-        <div className="bg-[oklch(0.18_0.02_260)] rounded-xl border border-[oklch(0.25_0.02_260)] p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-white">Kalan Süre</span>
+      {/* Content */}
+      <main className="flex-1 px-4 py-6 space-y-6 pb-32">
+        {/* Price section */}
+        <div className="space-y-3">
+          <div className="flex items-baseline gap-3">
             <span
-              className={`text-lg font-bold font-price ${progress < 30 ? "text-red-400" : progress < 60 ? "text-yellow-400" : "text-green-400"}`}
+              className={`text-5xl font-bold font-price text-red-400 ${
+                flashing ? "price-flash" : ""
+              }`}
             >
-              {timeLeft}
+              {formatPrice(deal.currentPrice)}
+            </span>
+            <span className="text-lg text-[oklch(0.70_0.02_240)] line-through">
+              {formatPrice(deal.originalPrice)}
             </span>
           </div>
-          <div className="h-2.5 bg-[oklch(0.22_0.02_260)] rounded-full overflow-hidden">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1 rounded-full">
+              {discountPct}% İndirim
+            </span>
+            <span className="text-sm text-[oklch(0.70_0.02_240)]">
+              Orijinal: {formatPrice(deal.originalPrice)}
+            </span>
+          </div>
+        </div>
+
+        {/* Time & Stock */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-3 border border-[oklch(0.25_0.02_260)]">
+            <p className="text-xs text-[oklch(0.70_0.02_240)] font-medium">Kalan Süre</p>
+            <p className="text-lg font-bold text-white mt-1">{timeLeft}</p>
+          </div>
+          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-3 border border-[oklch(0.25_0.02_260)]">
+            <p className="text-xs text-[oklch(0.70_0.02_240)] font-medium">Kalan Stok</p>
+            <p className="text-lg font-bold text-white mt-1">
+              {deal.stock === 0 ? "Tükendi" : `${deal.stock} / ${deal.totalStock}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="h-2 bg-[oklch(0.22_0.02_260)] rounded-full overflow-hidden">
             <div
-              className={`h-full bg-gradient-to-r ${progressColor} rounded-full transition-all duration-1000`}
+              className={`h-full bg-gradient-to-r ${progressColor} transition-all duration-1000`}
               style={{ width: `${progress}%` }}
             />
           </div>
+          <p className="text-xs text-[oklch(0.70_0.02_240)]">
+            Fırsat %{Math.round(progress)} tamamlandı
+          </p>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl border border-[oklch(0.25_0.02_260)] p-3 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[oklch(0.25_0.02_260)] flex items-center justify-center">
-              <Package className="w-4 h-4 text-[oklch(0.70_0.02_240)]" />
-            </div>
-            <div>
-              <p className="text-xs text-[oklch(0.70_0.02_240)]">Kalan Paket</p>
-              <p className="text-base font-bold text-white font-price">{deal.stock}</p>
-            </div>
-          </div>
-          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl border border-[oklch(0.25_0.02_260)] p-3 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[oklch(0.25_0.02_260)] flex items-center justify-center">
-              <Zap className="w-4 h-4 text-[oklch(0.65_0.22_45)]" />
-            </div>
-            <div>
-              <p className="text-xs text-[oklch(0.70_0.02_240)]">Taban Fiyat</p>
-              <p className="text-base font-bold text-white font-price">
-                {formatPrice(deal.minPrice)}
-              </p>
-            </div>
-          </div>
+        {/* FOMO section */}
+        <div
+          className={`bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/40 rounded-xl p-4 text-center ${
+            shaking ? "shake" : ""
+          }`}
+        >
+          <p className="text-sm font-bold text-red-300">
+            ⚡ {deal.viewerCount} kişi bu fiyatı izliyor!
+          </p>
+          <p className="text-xs text-red-200/80 mt-1">
+            Fiyat her saniye düşüyor — hızlı karar ver!
+          </p>
         </div>
-      </div>
 
-      {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-[oklch(0.18_0.02_260)]/95 backdrop-blur-md border-t border-[oklch(0.25_0.02_260)] px-4 py-4 z-40">
-        <p className="text-center text-xs text-[oklch(0.70_0.02_240)] mb-2 font-medium">
-          Kalan Paket: <span className={`font-bold ${
-            deal.stock === 0 ? "text-red-400" : "text-white"
-          }`}>{deal.stock}</span>
-        </p>
+        {/* Web3 Status */}
+        {isConnected && (
+          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-3 border border-[oklch(0.25_0.02_260)]">
+            <p className="text-xs text-[oklch(0.70_0.02_240)] font-medium">Monad Testnet</p>
+            <p className="text-sm font-bold text-white mt-1">
+              {account?.slice(0, 6)}...{account?.slice(-4)}
+            </p>
+          </div>
+        )}
+      </main>
+
+      {/* CTA Button */}
+      <div className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto px-4 py-4 bg-[oklch(0.18_0.02_260)] border-t border-[oklch(0.25_0.02_260)]">
         {purchased ? (
-          <div className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-2xl py-4 font-bold text-lg">
+          <div className="flex items-center justify-center gap-2 bg-green-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-green-500">
             <CheckCircle className="w-5 h-5" />
             Satın Alındı!
           </div>
@@ -203,13 +223,31 @@ export default function DealDetail() {
           <div className="flex items-center justify-center gap-2 bg-red-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-red-500">
             ⛔ Stok Tükendi
           </div>
-        ) : (
+        ) : !isConnected ? (
           <button
-            onClick={handlePurchase}
+            onClick={() => navigate("/")}
             className="btn-fire w-full py-4 text-lg font-extrabold tracking-wide flex items-center justify-center gap-2 active:scale-95"
           >
             <Zap className="w-5 h-5 fill-current" />
-            BU FİYATTAN KAP!
+            Cüzdan Bağla
+          </button>
+        ) : (
+          <button
+            onClick={handlePurchase}
+            disabled={web3Loading}
+            className="btn-fire w-full py-4 text-lg font-extrabold tracking-wide flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {web3Loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                İşlem Yapılıyor...
+              </>
+            ) : (
+              <>
+                <Zap className="w-5 h-5 fill-current" />
+                BU FİYATTAN KAP!
+              </>
+            )}
           </button>
         )}
       </div>
