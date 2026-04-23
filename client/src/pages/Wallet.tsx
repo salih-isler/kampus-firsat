@@ -83,7 +83,7 @@ export default function Wallet() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-3xl font-bold font-price">
-                  {parseFloat(balance).toFixed(2)}
+                  {balance && balance !== "0" ? parseFloat(balance).toFixed(4) : "0.00"}
                 </p>
                 <p className="text-xs text-blue-100 mt-1">MONAD</p>
               </div>

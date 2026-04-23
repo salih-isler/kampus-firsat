@@ -16,7 +16,7 @@ export default function DealDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { getDealById, updateDealStock, addTicket } = useDeals();
-  const { account, isConnected, sendTransaction, isLoading: web3Loading } = useWeb3();
+  const { account, isConnected, sendTransaction, isLoading: web3Loading, updateBalance } = useWeb3();
   const deal = getDealById(params.id);
   const [flashing, setFlashing] = useState(false);
   const [purchased, setPurchased] = useState(false);
@@ -76,6 +76,9 @@ export default function DealDetail() {
 
       addTicket(ticket);
 
+      // Bakiye güncelle
+      await updateBalance();
+
       setPurchased(true);
       setShowConfirmModal(false);
 
@@ -90,7 +93,8 @@ export default function DealDetail() {
     } finally {
       setIsProcessing(false);
     }
-  }, [deal, updateDealStock, navigate, addTicket]);
+  }, [deal, updateDealStock, navigate, addTicket, updateBalance]);
+
 
   if (!deal) return null;
 

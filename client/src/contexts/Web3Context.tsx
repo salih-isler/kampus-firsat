@@ -17,6 +17,7 @@ interface Web3ContextType {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToMonad: () => Promise<void>;
+  updateBalance: () => Promise<void>;
   
   // Transaction
   sendTransaction: (to: string, amount: string) => Promise<string | null>;
@@ -65,7 +66,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         // Bakiye al
         const provider = new BrowserProvider(ethereum);
         const balance = await provider.getBalance(accounts[0]);
-        setBalance(formatEther(balance));
+        const balanceStr = formatEther(balance);
+        setBalance(balanceStr);
+
+        // localStorage'a kaydet
+        localStorage.setItem(
+          "web3-connection",
+          JSON.stringify({
+            account: accounts[0],
+            balance: balanceStr,
+            timestamp: Date.now(),
+          })
+        );
       }
     } catch (err: any) {
       setError(err.message || "Bağlantı başarısız");
@@ -80,6 +92,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     setAccount(null);
     setIsConnected(false);
     setBalance("0");
+    localStorage.removeItem("web3-connection");
   }, []);
 
   // Monad Testnet'e geç
@@ -111,6 +124,33 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     }
   }, [getProvider]);
 
+  // Bakiye güncelle (manuel)
+  const updateBalanceManual = useCallback(async () => {
+    if (!account || !isConnected) return;
+
+    try {
+      const ethereum = getProvider();
+      if (!ethereum) return;
+
+      const provider = new BrowserProvider(ethereum);
+      const balance = await provider.getBalance(account);
+      const balanceStr = formatEther(balance);
+      setBalance(balanceStr);
+
+      // localStorage güncelle
+      localStorage.setItem(
+        "web3-connection",
+        JSON.stringify({
+          account,
+          balance: balanceStr,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (err) {
+      console.error("Bakiye güncelleme hatası:", err);
+    }
+  }, [account, isConnected, getProvider]);
+
   // İşlem gönder (MONAD transfer)
   const sendTransaction = useCallback(
     async (to: string, amount: string): Promise<string | null> => {
@@ -133,6 +173,9 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           gasLimit: 200000,
         });
 
+        // İşlem tamamlandıktan sonra bakiye güncelle
+        setTimeout(() => updateBalanceManual(), 2000);
+
         // İşlem hash'i döndür
         return tx.hash;
       } catch (err: any) {
@@ -143,8 +186,23 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    [account, getProvider]
+    [account, getProvider, updateBalanceManual]
   );
+
+  // Sayfa yüklendiğinde localStorage'dan bağlantı geri yükle
+  useEffect(() => {
+    const stored = localStorage.getItem("web3-connection");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        setAccount(data.account);
+        setBalance(data.balance);
+        setIsConnected(true);
+      } catch (err) {
+        console.error("localStorage yükleme hatası:", err);
+      }
+    }
+  }, []);
 
   // Bakiye güncellemesi
   useEffect(() => {
@@ -157,7 +215,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
 
         const provider = new BrowserProvider(ethereum);
         const balance = await provider.getBalance(account);
-        setBalance(formatEther(balance));
+        const balanceStr = formatEther(balance);
+        setBalance(balanceStr);
+
+        // localStorage güncelle
+        localStorage.setItem(
+          "web3-connection",
+          JSON.stringify({
+            account,
+            balance: balanceStr,
+            timestamp: Date.now(),
+          })
+        );
       } catch (err) {
         console.error("Bakiye güncelleme hatası:", err);
       }
@@ -197,6 +266,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         connectWallet,
         disconnectWallet,
         switchToMonad,
+        updateBalance: updateBalanceManual,
         sendTransaction,
         isLoading,
         error,
@@ -213,4 +283,9 @@ export function useWeb3() {
     throw new Error("useWeb3 must be used within Web3Provider");
   }
   return context;
+}
+
+export function useWeb3Balance() {
+  const { balance, updateBalance } = useWeb3();
+  return { balance, updateBalance };
 }
