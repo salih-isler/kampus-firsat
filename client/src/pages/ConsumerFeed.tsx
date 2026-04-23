@@ -15,7 +15,7 @@ import { toast } from "sonner";
 export default function ConsumerFeed() {
   const [, navigate] = useLocation();
   const { deals } = useDeals();
-  const { account, isConnected, balance, connectWallet, disconnectWallet, isLoading } = useWeb3();
+  const { account, isConnected, balance, connectWallet, disconnectWallet, isLoading, monadTlRate } = useWeb3();
   const [tick, setTick] = useState(0);
 
   // Simulate live price drops every 3 seconds
@@ -69,12 +69,18 @@ export default function ConsumerFeed() {
           </div>
         </div>
 
-        {/* Location filter */}
-        <button className="mt-2.5 flex items-center gap-1.5 bg-[oklch(0.25_0.02_260)] rounded-full px-3 py-1.5 text-xs font-medium text-white hover:bg-[oklch(0.30_0.02_260)] transition-colors">
-          <MapPin className="w-3.5 h-3.5 text-[oklch(0.65_0.22_45)]" />
-          <span>Kayseri'n Umu Participatlar Cafes</span>
-          <ChevronDown className="w-3.5 h-3.5 text-[oklch(0.70_0.02_240)] ml-0.5" />
-        </button>
+        {/* Location filter + Exchange Rate */}
+        <div className="mt-2.5 flex items-center gap-2">
+          <button className="flex items-center gap-1.5 bg-[oklch(0.25_0.02_260)] rounded-full px-3 py-1.5 text-xs font-medium text-white hover:bg-[oklch(0.30_0.02_260)] transition-colors">
+            <MapPin className="w-3.5 h-3.5 text-[oklch(0.65_0.22_45)]" />
+            <span>Kayseri'n Umu Participatlar Cafes</span>
+            <ChevronDown className="w-3.5 h-3.5 text-[oklch(0.70_0.02_240)] ml-0.5" />
+          </button>
+          <div className="flex items-center gap-1.5 bg-[oklch(0.25_0.02_260)] rounded-full px-3 py-1.5 text-xs font-medium text-white">
+            <Coins className="w-3.5 h-3.5 text-[oklch(0.65_0.22_45)]" />
+            <span>1 MON = {monadTlRate.toFixed(2)} TL</span>
+          </div>
+        </div>
       </header>
 
       {/* Feed */}

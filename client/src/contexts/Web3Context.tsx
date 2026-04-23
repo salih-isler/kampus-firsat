@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { BrowserProvider, Contract, parseEther, formatEther } from "ethers";
 import { MONAD_CONFIG, MONAD_CHAIN_CONFIG } from "@/lib/monad";
+import { getMonadTlRateCached } from "@/lib/exchange";
 
 interface Web3ContextType {
   // Wallet
@@ -13,11 +14,15 @@ interface Web3ContextType {
   isConnected: boolean;
   balance: string;
   
+  // Exchange Rate
+  monadTlRate: number;
+  
   // Functions
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   switchToMonad: () => Promise<void>;
   updateBalance: () => Promise<void>;
+  refreshExchangeRate: () => Promise<void>;
   
   // Transaction
   sendTransaction: (to: string, amount: string) => Promise<string | null>;
@@ -31,6 +36,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState("0");
+  const [monadTlRate, setMonadTlRate] = useState(8); // Fallback
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +129,24 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   }, [getProvider]);
+
+  // Exchange rate güncelle
+  const refreshExchangeRate = useCallback(async () => {
+    try {
+      const rate = await getMonadTlRateCached();
+      setMonadTlRate(rate);
+    } catch (err) {
+      console.error("Exchange rate güncelleme hatası:", err);
+    }
+  }, []);
+
+  // Sayfa yüklendiğinde exchange rate'i al
+  useEffect(() => {
+    refreshExchangeRate();
+    // Her 5 dakikada bir güncelle
+    const interval = setInterval(refreshExchangeRate, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [refreshExchangeRate]);
 
   // Bakiye güncelle (manuel)
   const updateBalanceManual = useCallback(async () => {
@@ -263,10 +287,12 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         account,
         isConnected,
         balance,
+        monadTlRate,
         connectWallet,
         disconnectWallet,
         switchToMonad,
         updateBalance: updateBalanceManual,
+        refreshExchangeRate,
         sendTransaction,
         isLoading,
         error,

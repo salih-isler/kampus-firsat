@@ -10,14 +10,14 @@ import { ArrowLeft, Users, Package, Zap, CheckCircle, Loader2, X } from "lucide-
 import { useDeals } from "@/contexts/DealsContext";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { formatPrice, formatTimeLeft, getTimeProgress } from "@/lib/data";
-import { tlToMonad, MONAD_TL_RATE } from "@/lib/monad";
+import { tlToMonad } from "@/lib/monad";
 import { toast } from "sonner";
 
 export default function DealDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { getDealById, updateDealStock, addTicket } = useDeals();
-  const { account, isConnected, sendTransaction, isLoading: web3Loading, updateBalance, balance } = useWeb3();
+  const { account, isConnected, sendTransaction, isLoading: web3Loading, updateBalance, balance, monadTlRate } = useWeb3();
   const deal = getDealById(params.id);
   const [flashing, setFlashing] = useState(false);
   const [purchased, setPurchased] = useState(false);
@@ -53,14 +53,14 @@ export default function DealDetail() {
       return;
     }
 
-    // TL → MONAD dönüşümü
-    const requiredMonad = tlToMonad(deal.currentPrice);
+    // TL → MONAD dönüşümü (dinamik kur ile)
+    const requiredMonad = deal.currentPrice / monadTlRate;
     const userBalance = parseFloat(balance || "0");
 
     // Bakiye kontrolü
     if (userBalance < requiredMonad) {
       toast.error(
-        `Yetersiz bakiye! Gerekli: ${requiredMonad.toFixed(4)} MONAD (${(requiredMonad * MONAD_TL_RATE).toFixed(2)} TL)\nMevcut: ${userBalance.toFixed(4)} MONAD`,
+        `Yetersiz bakiye! Gerekli: ${requiredMonad.toFixed(4)} MONAD (${deal.currentPrice.toFixed(2)} TL)\nMevcut: ${userBalance.toFixed(4)} MONAD (${(userBalance * monadTlRate).toFixed(2)} TL)`,
         { duration: 3000 }
       );
       setShowConfirmModal(false);
@@ -108,7 +108,7 @@ export default function DealDetail() {
       setShowConfirmModal(false);
 
       toast.success("Satın alındı! 🎉", {
-        description: `${deal.productName} — ${formatPrice(deal.currentPrice)}\n${requiredMonad.toFixed(4)} MONAD (${(requiredMonad * MONAD_TL_RATE).toFixed(2)} TL) kullanıldı\nKod: ${deliveryCode}`,
+        description: `${deal.productName} — ${formatPrice(deal.currentPrice)}\n${requiredMonad.toFixed(4)} MONAD (1 MON = ${monadTlRate.toFixed(2)} TL)\nKod: ${deliveryCode}`,
         duration: 3000,
       });
 
@@ -118,7 +118,7 @@ export default function DealDetail() {
     } finally {
       setIsProcessing(false);
     }
-  }, [deal, updateDealStock, navigate, addTicket, updateBalance, account, balance]);
+  }, [deal, updateDealStock, navigate, addTicket, updateBalance, account, balance, monadTlRate]);
 
 
 
