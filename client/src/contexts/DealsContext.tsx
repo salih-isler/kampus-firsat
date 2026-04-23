@@ -5,18 +5,21 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { MOCK_DEALS, type Deal } from "@/lib/data";
+import { MOCK_DEALS, MOCK_TICKETS, type Deal, type Ticket } from "@/lib/data";
 
 interface DealsContextType {
   deals: Deal[];
+  tickets: Ticket[];
   updateDealStock: (dealId: string, quantity: number) => void;
   getDealById: (dealId: string) => Deal | undefined;
+  addTicket: (ticket: Ticket) => void;
 }
 
 const DealsContext = createContext<DealsContextType | undefined>(undefined);
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS);
+  const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS);
 
   // Her saniye: fiyat -1 TL, kalan süre güncelle
   useEffect(() => {
@@ -64,8 +67,12 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     [deals]
   );
 
+  const addTicket = useCallback((ticket: Ticket) => {
+    setTickets((prev) => [ticket, ...prev]);
+  }, []);
+
   return (
-    <DealsContext.Provider value={{ deals, updateDealStock, getDealById }}>
+    <DealsContext.Provider value={{ deals, tickets, updateDealStock, getDealById, addTicket }}>
       {children}
     </DealsContext.Provider>
   );
@@ -77,4 +84,12 @@ export function useDeals() {
     throw new Error("useDeals must be used within DealsProvider");
   }
   return context;
+}
+
+export function useTickets() {
+  const context = useContext(DealsContext);
+  if (!context) {
+    throw new Error("useTickets must be used within DealsProvider");
+  }
+  return context.tickets;
 }

@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Users, Package, Zap, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Package, Zap, CheckCircle, Loader2, X } from "lucide-react";
 import { useDeals } from "@/contexts/DealsContext";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { formatPrice, formatTimeLeft, getTimeProgress } from "@/lib/data";
@@ -15,13 +15,15 @@ import { toast } from "sonner";
 export default function DealDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { getDealById, updateDealStock } = useDeals();
+  const { getDealById, updateDealStock, addTicket } = useDeals();
   const { account, isConnected, sendTransaction, isLoading: web3Loading } = useWeb3();
   const deal = getDealById(params.id);
   const [flashing, setFlashing] = useState(false);
   const [purchased, setPurchased] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Live price drop simulation
   useEffect(() => {
@@ -42,46 +44,53 @@ export default function DealDetail() {
     return () => clearInterval(interval);
   }, []);
 
-  const handlePurchase = useCallback(async () => {
+  const handlePurchaseConfirm = useCallback(async () => {
     if (!deal) return;
     if (deal.stock <= 0) {
       toast.error("Stok tükendi!", { duration: 2000 });
+      setShowConfirmModal(false);
       return;
     }
 
-    if (!isConnected) {
-      toast.error("Lütfen cüzdan bağlayın", { duration: 2000 });
-      return;
-    }
+    setIsProcessing(true);
 
     try {
-      // Satın alım işlemini başlat
-      toast.loading("İşlem başlatılıyor...", { duration: 2000 });
+      // Stok azalt
+      updateDealStock(deal.id, 1);
 
-      // MetaMask'tan MONAD transfer iste
-      const amount = (deal.currentPrice / 1e18).toString(); // Wei'den MONAD'a çevir
-      const txHash = await sendTransaction(deal.id, amount);
+      // Bilet oluştur
+      const deliveryCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const ticket = {
+        id: `ticket-${Date.now()}`,
+        dealId: deal.id,
+        cafeName: deal.cafeName,
+        cafeLocation: deal.cafeLocation,
+        productName: deal.productName,
+        quantity: 1,
+        paidPrice: deal.currentPrice,
+        purchasedAt: Date.now(),
+        deliveryCode,
+        qrData: `${deal.id}-${deliveryCode}-${Date.now()}`,
+        used: false,
+      };
 
-      if (txHash) {
-        setTxHash(txHash);
-        
-        // Stok azalt
-        updateDealStock(deal.id, 1);
-        setPurchased(true);
+      addTicket(ticket);
 
-        toast.success("Satın alındı! 🎉", {
-          description: `${deal.productName} — ${formatPrice(deal.currentPrice)} MONAD\nTX: ${txHash.slice(0, 10)}...`,
-          duration: 3000,
-        });
+      setPurchased(true);
+      setShowConfirmModal(false);
 
-        setTimeout(() => navigate("/wallet"), 2000);
-      } else {
-        toast.error("İşlem başarısız", { duration: 2000 });
-      }
+      toast.success("Satın alındı! 🎉", {
+        description: `${deal.productName} — ${formatPrice(deal.currentPrice)}\nKod: ${deliveryCode}`,
+        duration: 3000,
+      });
+
+      setTimeout(() => navigate("/wallet"), 2000);
     } catch (err: any) {
       toast.error(err.message || "İşlem sırasında hata oluştu", { duration: 2000 });
+    } finally {
+      setIsProcessing(false);
     }
-  }, [deal, isConnected, updateDealStock, navigate, sendTransaction]);
+  }, [deal, updateDealStock, navigate, addTicket]);
 
   if (!deal) return null;
 
@@ -213,22 +222,12 @@ export default function DealDetail() {
             Fiyat her saniye düşüyor — hızlı karar ver!
           </p>
         </div>
-
-        {/* Web3 Status */}
-        {isConnected && (
-          <div className="bg-[oklch(0.18_0.02_260)] rounded-xl p-3 border border-[oklch(0.25_0.02_260)]">
-            <p className="text-xs text-[oklch(0.70_0.02_240)] font-medium">Monad Testnet</p>
-            <p className="text-sm font-bold text-white mt-1">
-              {account?.slice(0, 6)}...{account?.slice(-4)}
-            </p>
-          </div>
-        )}
       </main>
 
       {/* CTA Button */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[480px] mx-auto px-4 py-4 bg-[oklch(0.18_0.02_260)] border-t border-[oklch(0.25_0.02_260)]">
         {purchased ? (
-          <div className="flex items-center justify-center gap-2 bg-green-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-green-500">
+          <div className="flex items-center justify-center gap-2 bg-green-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-green-500 animate-bounce">
             <CheckCircle className="w-5 h-5" />
             Satın Alındı!
           </div>
@@ -236,21 +235,13 @@ export default function DealDetail() {
           <div className="flex items-center justify-center gap-2 bg-red-600/80 text-white rounded-2xl py-4 font-bold text-lg border border-red-500">
             ⛔ Stok Tükendi
           </div>
-        ) : !isConnected ? (
-          <button
-            onClick={() => navigate("/")}
-            className="btn-fire w-full py-4 text-lg font-extrabold tracking-wide flex items-center justify-center gap-2 active:scale-95"
-          >
-            <Zap className="w-5 h-5 fill-current" />
-            Cüzdan Bağla
-          </button>
         ) : (
           <button
-            onClick={handlePurchase}
-            disabled={web3Loading}
+            onClick={() => setShowConfirmModal(true)}
+            disabled={isProcessing}
             className="btn-fire w-full py-4 text-lg font-extrabold tracking-wide flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {web3Loading ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 İşlem Yapılıyor...
@@ -263,6 +254,118 @@ export default function DealDetail() {
             )}
           </button>
         )}
+      </div>
+
+      {/* Purchase Confirmation Modal */}
+      {showConfirmModal && (
+        <PurchaseConfirmModal
+          deal={deal}
+          onConfirm={handlePurchaseConfirm}
+          onCancel={() => setShowConfirmModal(false)}
+          isProcessing={isProcessing}
+        />
+      )}
+    </div>
+  );
+}
+
+function PurchaseConfirmModal({
+  deal,
+  onConfirm,
+  onCancel,
+  isProcessing,
+}: {
+  deal: any;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isProcessing: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="relative w-full max-w-[480px] bg-[oklch(0.18_0.02_260)] rounded-t-3xl px-6 pt-6 pb-8 slide-up border-t border-[oklch(0.25_0.02_260)]">
+        {/* Close button */}
+        <button
+          onClick={onCancel}
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[oklch(0.25_0.02_260)] flex items-center justify-center text-[oklch(0.70_0.02_240)] hover:bg-[oklch(0.30_0.02_260)] transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Handle */}
+        <div className="w-10 h-1 rounded-full bg-[oklch(0.25_0.02_260)] mx-auto mb-6" />
+
+        <h2 className="text-xl font-bold text-white mb-1">Satın Almayı Onayla</h2>
+        <p className="text-xs text-[oklch(0.70_0.02_240)] mb-6">
+          Bu fiyattan satın almak istediğinden emin misin?
+        </p>
+
+        {/* Order summary */}
+        <div className="bg-[oklch(0.25_0.02_260)] rounded-xl p-4 mb-6 space-y-3">
+          {/* Product */}
+          <div>
+            <p className="text-xs text-[oklch(0.70_0.02_240)] mb-1">Ürün</p>
+            <p className="text-sm font-bold text-white">{deal.productName}</p>
+            <p className="text-xs text-[oklch(0.70_0.02_240)]">
+              {deal.cafeName} • {deal.cafeLocation}
+            </p>
+          </div>
+
+          <div className="h-px bg-[oklch(0.30_0.02_260)]" />
+
+          {/* Price breakdown */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[oklch(0.70_0.02_240)]">Orijinal Fiyat</span>
+              <span className="text-sm font-mono text-[oklch(0.70_0.02_240)] line-through">
+                {formatPrice(deal.originalPrice)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[oklch(0.70_0.02_240)]">Şu Anki Fiyat</span>
+              <span className="text-lg font-bold font-price text-red-400">
+                {formatPrice(deal.currentPrice)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[oklch(0.70_0.02_240)]">Tasarruf</span>
+              <span className="text-sm font-bold text-green-400">
+                {formatPrice(deal.originalPrice - deal.currentPrice)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onConfirm}
+            disabled={isProcessing}
+            className="btn-fire w-full py-4 text-lg font-extrabold tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                İşlem Yapılıyor...
+              </>
+            ) : (
+              <>
+                <Zap className="w-5 h-5 fill-current" />
+                Evet, Satın Al!
+              </>
+            )}
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={isProcessing}
+            className="w-full py-3 text-sm font-semibold text-[oklch(0.70_0.02_240)] bg-[oklch(0.25_0.02_260)] rounded-xl hover:bg-[oklch(0.30_0.02_260)] transition-colors disabled:opacity-50"
+          >
+            İptal Et
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -6,8 +6,9 @@
 
 import { useState } from "react";
 import { MapPin, Star, Coins, CheckCircle, Clock, ChevronRight, ExternalLink } from "lucide-react";
-import { MOCK_TICKETS, MOCK_WALLET, formatPrice, type Ticket } from "@/lib/data";
+import { MOCK_WALLET, formatPrice, type Ticket } from "@/lib/data";
 import { useWeb3 } from "@/contexts/Web3Context";
+import { useTickets } from "@/contexts/DealsContext";
 import { BottomNav } from "./ConsumerFeed";
 import { toast } from "sonner";
 import { MONAD_CONFIG } from "@/lib/monad";
@@ -62,7 +63,7 @@ function QRCodeDisplay({ data }: { data: string }) {
 }
 
 export default function Wallet() {
-  const [tickets] = useState<Ticket[]>(MOCK_TICKETS);
+  const tickets = useTickets();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const { account, isConnected, balance } = useWeb3();
 
@@ -128,7 +129,7 @@ export default function Wallet() {
         <div>
           <h2 className="text-base font-bold text-white mb-3">Biletlerim</h2>
 
-          {tickets.length === 0 ? (
+          {!tickets || tickets.length === 0 ? (
             <div className="bg-[oklch(0.18_0.02_260)] rounded-2xl border border-[oklch(0.25_0.02_260)] p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-[oklch(0.25_0.02_260)] flex items-center justify-center mx-auto mb-3">
                 <svg viewBox="0 0 24 24" className="w-8 h-8 text-[oklch(0.70_0.02_240)]" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -143,7 +144,7 @@ export default function Wallet() {
             </div>
           ) : (
             <div className="space-y-3">
-              {tickets.map((ticket) => (
+              {tickets && tickets.map((ticket) => (
                 <TicketCard
                   key={ticket.id}
                   ticket={ticket}
