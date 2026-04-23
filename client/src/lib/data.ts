@@ -110,25 +110,11 @@ export const MOCK_DEALS: Deal[] = [
 ];
 
 export const MOCK_WALLET: WalletBalance = {
-  silverPoints: 1240,
-  goldTokens: 3,
+  silverPoints: 0,
+  goldTokens: 0,
 };
 
-export const MOCK_TICKETS: Ticket[] = [
-  {
-    id: "t1",
-    dealId: "d2",
-    cafeName: "Brew Lab",
-    cafeLocation: "Sümer Kampüsü",
-    productName: "Filtre Kahve & Kurabiye",
-    quantity: 1,
-    paidPrice: 28.0,
-    purchasedAt: Date.now() - 30 * 60 * 1000,
-    deliveryCode: "#8492",
-    qrData: "KAMPUS-FIRSAT-T1-8492-BREWLAB",
-    used: false,
-  },
-];
+export const MOCK_TICKETS: Ticket[] = [];
 
 // Utility: get price color based on drop percentage
 export function getPriceColor(current: number, original: number): string {

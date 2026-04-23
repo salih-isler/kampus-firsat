@@ -127,7 +127,7 @@ export default function Wallet() {
 
         {/* Tickets section */}
         <div>
-          <h2 className="text-base font-bold text-white mb-3">Biletlerim</h2>
+          <h2 className="text-base font-bold text-white mb-3">Siparişlerim</h2>
 
           {!tickets || tickets.length === 0 ? (
             <div className="bg-[oklch(0.18_0.02_260)] rounded-2xl border border-[oklch(0.25_0.02_260)] p-8 text-center">
@@ -137,9 +137,9 @@ export default function Wallet() {
                   <path d="M2 10h20" />
                 </svg>
               </div>
-              <p className="text-sm font-semibold text-white">Henüz bilet yok</p>
+              <p className="text-sm font-semibold text-white">Henüz sipariş yok</p>
               <p className="text-xs text-[oklch(0.70_0.02_240)] mt-1">
-                Bir fırsat kap, biletini burada gör!
+                Bir fırsat kap, siparişini burada gör!
               </p>
             </div>
           ) : (
