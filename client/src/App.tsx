@@ -1,11 +1,6 @@
 /**
- * App.tsx — Kampüs Fırsat Uygulaması
- * Design: Kampüs Enerjisi — warm orange-red, Plus Jakarta Sans, mobile-first
- * Routes:
- *   /           → ConsumerFeed (Ana Sayfa)
- *   /deal/:id   → DealDetail (Adrenalin Odası)
- *   /wallet     → Wallet (Cüzdanım & QR Biletler)
- *   /business   → Business (İşletme Paneli)
+ * App.tsx — Kampüs Fırsat Uygulaması (DropBite Tasarımı)
+ * Design: Koyu tema, turuncu aksentler, stok yönetimi
  */
 
 import { Toaster } from "@/components/ui/sonner";
@@ -14,6 +9,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { DealsProvider } from "./contexts/DealsContext";
 import ConsumerFeed from "./pages/ConsumerFeed";
 import DealDetail from "./pages/DealDetail";
 import Wallet from "./pages/Wallet";
@@ -35,11 +31,13 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster position="top-center" richColors />
-          <Router />
-        </TooltipProvider>
+      <ThemeProvider defaultTheme="dark">
+        <DealsProvider>
+          <TooltipProvider>
+            <Toaster position="top-center" richColors />
+            <Router />
+          </TooltipProvider>
+        </DealsProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
