@@ -13,6 +13,8 @@ interface DealsContextType {
   updateDealStock: (dealId: string, quantity: number) => void;
   getDealById: (dealId: string) => Deal | undefined;
   addTicket: (ticket: Ticket) => void;
+  markTicketAsUsed: (ticketId: string) => void;
+  getTicketByCode: (code: string) => Ticket | undefined;
 }
 
 const DealsContext = createContext<DealsContextType | undefined>(undefined);
@@ -71,8 +73,21 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     setTickets((prev) => [ticket, ...prev]);
   }, []);
 
+  const markTicketAsUsed = useCallback((ticketId: string) => {
+    setTickets((prev) =>
+      prev.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, used: true } : ticket
+      )
+    );
+  }, []);
+
+  const getTicketByCode = useCallback(
+    (code: string) => tickets.find((t) => t.deliveryCode === code),
+    [tickets]
+  );
+
   return (
-    <DealsContext.Provider value={{ deals, tickets, updateDealStock, getDealById, addTicket }}>
+    <DealsContext.Provider value={{ deals, tickets, updateDealStock, getDealById, addTicket, markTicketAsUsed, getTicketByCode }}>
       {children}
     </DealsContext.Provider>
   );
@@ -92,4 +107,15 @@ export function useTickets() {
     throw new Error("useTickets must be used within DealsProvider");
   }
   return context.tickets;
+}
+
+export function useTicketOperations() {
+  const context = useContext(DealsContext);
+  if (!context) {
+    throw new Error("useTicketOperations must be used within DealsProvider");
+  }
+  return {
+    markTicketAsUsed: context.markTicketAsUsed,
+    getTicketByCode: context.getTicketByCode,
+  };
 }
